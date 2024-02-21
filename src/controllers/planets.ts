@@ -1,68 +1,72 @@
 import { Request, Response } from "express";
 import Joi from "joi";
+import pgPromise from "pg-promise";
 
-type Planet = {
-    id: number,
-    name: string,
-  };
+const db = pgPromise()("postgres://postgres:postgres@localhost:5432/planet");
 
-  type Planets = Planet[];
+const setupDB = async () => {
+  await db.none(`
+    DROP TABLE IF EXISTS planets;
 
-  let planets: Planets = [
-    {
-      id: 1,
-      name: "Earth",
-    },
-    {
-      id: 2,
-      name: "Mars",
-    },
-  ];
+    CREATE TABLE planets (
+      id SERIAL NOT NULL PRIMARY KEY,
+      name TEXT NOT NULL
+    );
+  `)
 
-
-const getAll = (req: Request, res: Response) => {
-    res.status(200).json(planets);
+  await db.none(`INSERT INTO planets (name) VALUES ('Earth')`);
+  await db.none(`INSERT INTO planets (name) VALUES ('Mars')`);
 }
 
-const getOneById = (req: Request, res: Response) => {
-    const { id } = req.body;
-    const planet = planets.find((p) => p.id === Number(id));
+setupDB();
+
+
+
+
+const getAll = async (req: Request, res: Response) => {
+  const planets = await db.many(`SELECT * FROM planets;`)  
+  res.status(200).json(planets); 
+}
+
+const getOneById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const planet = await db.one(`SELECT * FROM planets WHERE id=$1;`, Number(id));
     
-    res.status(200).json(planet);
+  res.status(200).json(planet);
 }
 
 const planetSchema = Joi.object({
-  id: Joi.number().integer().required(),
   name: Joi.string().required(),
 })
 
-const create = (req: Request, res: Response) => {
-    const { error, value} = planetSchema.validate(req.body);
-    const newPlanet: Planet = {
-      id: value.id,
-      name: value.name,
-    }
-    
+const create = async (req: Request, res: Response) => {
+  const { error, value} = planetSchema.validate(req.body);
+  const newPlanet = {
+    name: value.name,
+  }
+
     if(error){
         return res.status(400).json({ msg: error.details[0].message});
     } else {
-      planets = [...planets, newPlanet];
-      res.status(201).json({msg: 'create a new planet'});
+     await db.none(`INSERT INTO planets (name) VALUES ($1)`, newPlanet.name);
+     res.status(201).json({msg: 'create a new planet'});
     }
 }
 
-const updateById = (req: Request, res: Response) => {
+const updateById = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { name } = req.body;
-    planets = planets.map((p) => p.id === Number(id) ? ({...p, name}) : p);
     
+    await db.none(`UPDATE planets SET name=$2 WHERE id=$1`, [id, name]);
+
     res.status(200).json({ msg: 'update planet'});
 }
 
-const deleteById = (req: Request, res: Response) => {
+const deleteById = async (req: Request, res: Response) => {
     const { id } = req.params;
-    planets = planets.filter((p) => p.id !== Number(id));
-  
+    
+    await db.none(`DELETE FROM planets WHERE id=$1`, Number(id));
+
     res.status(200).json({ msg: 'planet deleted'});
 }
 
