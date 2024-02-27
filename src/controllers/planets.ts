@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import Joi from "joi";
+import { loadavg } from "os";
 import pgPromise from "pg-promise";
 
 const db = pgPromise()("postgres://postgres:postgres@localhost:5432/planet");
@@ -10,7 +11,8 @@ const setupDB = async () => {
 
     CREATE TABLE planets (
       id SERIAL NOT NULL PRIMARY KEY,
-      name TEXT NOT NULL
+      name TEXT NOT NULL,
+      image TEXT
     );
   `)
 
@@ -19,9 +21,6 @@ const setupDB = async () => {
 }
 
 setupDB();
-
-
-
 
 const getAll = async (req: Request, res: Response) => {
   const planets = await db.many(`SELECT * FROM planets;`)  
@@ -70,4 +69,20 @@ const deleteById = async (req: Request, res: Response) => {
     res.status(200).json({ msg: 'planet deleted'});
 }
 
-export { getAll, getOneById, create, updateById, deleteById };
+const addImg = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const fileName = req.file?.path;
+  // console.log(id)
+  // console.log(fileName)
+  console.log(req.file);
+
+  if (fileName) {
+    db.none(`UPDATE planets SET image=$2 WHERE id=$1`, [id, fileName]);
+    res.status(201).json({ masg: 'planet image upload'});
+  } else {
+    res.status(400).json({ msg: 'planet image not upload'})
+  }  
+  
+  
+}
+export { getAll, getOneById, create, updateById, deleteById, addImg };
