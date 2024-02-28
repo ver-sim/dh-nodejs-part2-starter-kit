@@ -4,6 +4,7 @@ import morgan from "morgan";
 import "express-async-errors";
 import { addImg, create, deleteById, getAll, getOneById, updateById } from "./controllers/planets.js";
 import multer from "multer";
+import { logIn, signUp } from "./controllers/users.js";
 
 dotenv.config();
 
@@ -36,6 +37,9 @@ app.put('/api/planets/:id', updateById);
 app.delete('/api/planets/:id', deleteById);
 
 app.post('/api/planets/:id/image', upload.single("image"), addImg);
+
+app.post('/api/users/signup', signUp);
+app.post('/api/users/login', logIn);
 
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`);
