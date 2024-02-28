@@ -32,6 +32,12 @@ const logIn = async (req: Request, res: Response) => {
     } else {
         res.status(400).json({ msg: "password or username incorrect"});
     }
-}
+};
 
-export { signUp, logIn }
+const logOut = async (req: Request, res: Response) => {
+    const user: any = req.user;
+    await db.none(`UPDATE users SET token=$2 WHERE id=$1`, [user?.id, null]);
+    res.status(200).json({ msg: "logout"});
+};
+
+export { signUp, logIn, logOut }
